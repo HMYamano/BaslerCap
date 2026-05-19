@@ -1,0 +1,40 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+.Python
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Tooling state ---
+.claude/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# --- App runtime data (camera output / local state) ---
+recordings/
+app_state/
+presets/*.json
+!presets/.gitkeep
+
+# --- Logs ---
+*.log

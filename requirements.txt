@@ -1,0 +1,18 @@
+# Basler Recorder dependencies
+# Tested on Windows 11 + Python 3.10/3.11
+
+# Camera SDK
+pypylon>=3.0.0
+
+# GUI
+PySide6>=6.5.0
+pyqtgraph>=0.13.3
+
+# Numerical / IO
+numpy>=1.24
+tifffile>=2023.7.10
+imagecodecs>=2023.7.10   # optional, enables BigTIFF compression backends
+
+# Optional but recommended
+h5py>=3.9.0              # for future HDF5 saving (TODO)
+opencv-python>=4.8.0     # MP4/AVI video recording
