@@ -167,6 +167,13 @@ class CameraController:
             device = tl_factory.CreateDevice(target)
             cam = pylon.InstantCamera(device)
             cam.Open()
+            # Enlarge the driver-side grab buffer ring. pypylon's default of 10
+            # is only ~10 ms of headroom at 1 kHz, so any host-side stall (GC,
+            # scheduler, disk burst) drops triggered frames. 200 gives ~200 ms.
+            try:
+                cam.MaxNumBuffer = 200
+            except Exception as e:
+                log.debug("Could not enlarge MaxNumBuffer: %s", e)
             self._camera = cam
             self._info = info
             self._is_dummy = False
@@ -362,12 +369,24 @@ class CameraController:
 
     def set_trigger(self, mode: str, source: Optional[str] = None,
                     activation: Optional[str] = None) -> None:
+        # Select FrameStart before touching TriggerMode. Many Basler USB cams
+        # default TriggerSelector to AcquisitionStart, which only triggers the
+        # very first frame and silently ignores every subsequent edge.
+        if self.has("TriggerSelector"):
+            entries = self.enum_entries("TriggerSelector")
+            if "FrameStart" in entries:
+                self.set("TriggerSelector", "FrameStart")
         if self.has("TriggerMode"):
             self.set("TriggerMode", mode)
         if source and self.has("TriggerSource"):
             self.set("TriggerSource", source)
         if activation and self.has("TriggerActivation"):
             self.set("TriggerActivation", activation)
+        # When TriggerMode=On, disable the free-run rate limiter. Otherwise a
+        # leftover AcquisitionFrameRate (e.g. 30) silently caps incoming
+        # external/software triggers at that value.
+        if mode == "On" and self.has("AcquisitionFrameRateEnable"):
+            self.set("AcquisitionFrameRateEnable", False)
 
     def software_trigger_supported(self) -> bool:
         """True if the camera exposes the ``TriggerSoftware`` command node."""

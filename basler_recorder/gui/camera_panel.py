@@ -17,7 +17,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..settings import DEFAULT_TARGET_FPS
+from ..settings import (
+    DEFAULT_EXPOSURE_TIME_US,
+    DEFAULT_GAIN_DB,
+    DEFAULT_TARGET_FPS,
+)
 from ..utils import CameraInfo
 from .widgets import NoWheelComboBox
 
@@ -134,6 +138,7 @@ class ExposureGainPanel(QWidget):
         self.spin_exposure.setSingleStep(100.0)
         self.spin_exposure.setSuffix(" µs")
         self.spin_exposure.setKeyboardTracking(False)
+        self.spin_exposure.setValue(DEFAULT_EXPOSURE_TIME_US)
 
         self.combo_auto_exp = NoWheelComboBox()
         self.combo_auto_exp.addItems(["Off", "Once", "Continuous"])
@@ -156,6 +161,7 @@ class ExposureGainPanel(QWidget):
         self.spin_gain.setSingleStep(0.5)
         self.spin_gain.setSuffix(" dB")
         self.spin_gain.setKeyboardTracking(False)
+        self.spin_gain.setValue(DEFAULT_GAIN_DB)
 
         self.combo_auto_gain = NoWheelComboBox()
         self.combo_auto_gain.addItems(["Off", "Once", "Continuous"])

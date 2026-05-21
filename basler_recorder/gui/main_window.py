@@ -34,6 +34,8 @@ from ..metadata import build_metadata, save_metadata_json
 from ..recorder_worker import RecorderJob, RecorderManager
 from ..settings import (
     CameraPreset,
+    DEFAULT_EXPOSURE_TIME_US,
+    DEFAULT_GAIN_DB,
     DEFAULT_TARGET_FPS,
     list_presets,
     load_last_session_state,
@@ -161,7 +163,7 @@ class MainWindow(QMainWindow):
 
         self.controller = CameraController()
         self.worker: Optional[CameraWorker] = None
-        self.recorder = RecorderManager(max_queue=512)
+        self.recorder = RecorderManager(max_queue=1024)
         self._recording_started_at: Optional[float] = None
         self._recording_meta: dict = {}
         self._preview_needs_autorange = True
@@ -282,7 +284,10 @@ class MainWindow(QMainWindow):
         self.panel_trigger_recording = RecordingPanel(
             title="Trigger recording",
             default_prefix="trigger",
-            default_format="avi",
+            # Default to raw because triggered acquisition is typically high
+            # rate (microscope-sync, 1 kHz+); MJPG/MP4 encode is CPU-bound and
+            # the most common cause of dropped frames in that regime.
+            default_format="raw",
             show_snapshot=False,
             show_presets=False,
             start_text="Start Trigger Recording",
@@ -613,7 +618,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self._error_box("Connect failed", str(e))
             return
-        self._apply_default_target_fps()
+        self._apply_default_camera_settings()
         self.panel_conn.set_connected_state(True)
         self.status_panel.set_camera(info.short())
         self._refresh_settings_from_camera()
@@ -710,8 +715,21 @@ class MainWindow(QMainWindow):
             self.panel_trigger.set_enabled_all(False)
             self.panel_trigger.set_software_trigger_supported(False)
 
-    def _apply_default_target_fps(self):
+    def _apply_default_camera_settings(self):
         c = self.controller
+        for kind in ("exposure", "gain"):
+            if c.has_auto(kind):
+                c.set_auto(kind, "Off")
+        if not c.set_exposure_us(DEFAULT_EXPOSURE_TIME_US):
+            self._status_message(
+                f"Failed to set default exposure to {DEFAULT_EXPOSURE_TIME_US:.0f} us.",
+                warning=True,
+            )
+        if not c.set_gain(DEFAULT_GAIN_DB):
+            self._status_message(
+                f"Failed to set default gain to {DEFAULT_GAIN_DB:.1f} dB.",
+                warning=True,
+            )
         if not (c.has("AcquisitionFrameRate") or c.has("AcquisitionFrameRateAbs")):
             return
         if not c.set_target_fps(DEFAULT_TARGET_FPS):
@@ -1227,6 +1245,19 @@ class MainWindow(QMainWindow):
         source = self.panel_trigger.combo_source.currentText()
         activation = self.panel_trigger.combo_activation.currentText()
         self.controller.set_trigger(mode, source, activation)
+        # set_trigger disables AcquisitionFrameRateEnable when mode=On so the
+        # free-run limiter cannot cap incoming triggers. Reflect that in the UI
+        # and re-read resulting fps so the user sees the change.
+        if self.controller.has("AcquisitionFrameRateEnable"):
+            self.panel_pf.set_fps(
+                self.controller.target_fps(),
+                bool(self.controller.get("AcquisitionFrameRateEnable", True)),
+            )
+            self._status_message(
+                "Trigger mode On: free-run rate limit disabled "
+                "(AcquisitionFrameRateEnable=False)."
+            )
+        self._update_resulting_fps_label()
         return True
 
     def _recording_output_path(self, output_dir: str, file_prefix: str, save_format: str) -> str:

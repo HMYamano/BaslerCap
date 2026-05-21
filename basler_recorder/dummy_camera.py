@@ -11,6 +11,8 @@ from typing import Any, Iterable, Optional
 
 import numpy as np
 
+from .settings import DEFAULT_EXPOSURE_TIME_US, DEFAULT_GAIN_DB, DEFAULT_TARGET_FPS
+
 
 # --- Minimal GenApi-like nodes -----------------------------------------------
 
@@ -257,15 +259,17 @@ class DummyCamera:
         oy = _NumericNode("int", 0, 0, self.SENSOR_H - 16, 16)
 
         # ExposureTime in microseconds
-        exposure = _NumericNode("float", 5000.0, 20.0, 1_000_000.0, 1.0)
-        gain = _NumericNode("float", 0.0, 0.0, 36.0, 0.1)
+        exposure = _NumericNode(
+            "float", DEFAULT_EXPOSURE_TIME_US, 20.0, 1_000_000.0, 1.0
+        )
+        gain = _NumericNode("float", DEFAULT_GAIN_DB, 0.0, 36.0, 0.1)
 
         pixfmt = _EnumNode(
             ["Mono8", "Mono12", "Mono16"], value="Mono8"
         )
 
         fps_enable = _BoolNode(True)
-        fps = _NumericNode("float", 30.0, 1.0, 500.0, 0.1)
+        fps = _NumericNode("float", DEFAULT_TARGET_FPS, 1.0, 10_000.0, 0.1)
 
         # Read-only resulting fps node — derived from current fps target & exposure
         cam = self
